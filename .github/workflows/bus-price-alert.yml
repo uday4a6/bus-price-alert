@@ -10,9 +10,11 @@
 name: Bus price alert
 
 on:
+  # GitHub's cron is unreliable for short intervals, so each run loops for 55 min
+  # (a check every 5 min) and then dispatches the next run itself. This hourly
+  # cron is only a backup that restarts the chain if it breaks.
   schedule:
-    # every 5 min, 05:30-00:25 IST (cron is UTC). GitHub may delay runs at busy times.
-    - cron: "*/5 0-18 * * *"
+    - cron: "7 0-18 * * *"
   workflow_dispatch:
     inputs:
       test:
@@ -27,7 +29,10 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 70
+    permissions:
+      actions: write   # to dispatch the next run
+      contents: read
     env:
       TZ: Asia/Kolkata
     steps:
@@ -47,9 +52,10 @@ jobs:
           MIN_DROP: ${{ vars.MIN_DROP }}
           ALERT_BELOW: ${{ vars.ALERT_BELOW }}
           MIN_LEAD: ${{ vars.MIN_LEAD }}
-          TEST_ALERT: ${{ inputs.test && '--test-alert' || '' }}
+          # test run: single check with test alert; normal run: loop 55 min
+          MODE: ${{ inputs.test && '--test-alert' || '--every 5 --for 55' }}
         run: |
-          python3 bus_price_alert.py $TEST_ALERT \
+          python3 -u bus_price_alert.py $MODE \
             --date "${TRAVEL_DATE:-today}" \
             --min-drop "${MIN_DROP:-300}" \
             --alert-below "${ALERT_BELOW:-1299}" \
@@ -61,3 +67,16 @@ jobs:
         with:
           path: .bus_alert_state
           key: bus-state-${{ github.run_id }}
+
+      # chain: start the next run, except at night (00:30-05:30 IST); the cron restarts it in the morning
+      - name: Dispatch next run
+        if: success() && !inputs.test
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          now=$((10#$(date +%H%M)))
+          if [ "$now" -ge 30 ] && [ "$now" -lt 530 ]; then
+            echo "Night time, not chaining"
+          else
+            gh workflow run bus-price-alert.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
+          fi
