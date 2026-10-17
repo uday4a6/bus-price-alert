@@ -1,0 +1,57 @@
+# Checks AbhiBus prices every 5 minutes and pushes drops to your phone via ntfy.
+#
+# Settings (repo Settings -> Secrets and variables -> Actions):
+#   secret   NTFY_TOPIC   ntfy topic your phone is subscribed to (required)
+#   variable TRAVEL_DATE  DD-MM-YYYY, or leave unset to watch today's buses (IST)
+#   variable MIN_DROP     alert when a bus drops at least this much (default 300)
+#   variable ALERT_BELOW  alert when cheapest bus is at or below this (default 1299)
+#   variable MIN_LEAD     ignore buses leaving within N minutes (default 45)
+
+name: Bus price alert
+
+on:
+  schedule:
+    # every 5 min, 05:30-00:25 IST (cron is UTC). GitHub may delay runs at busy times.
+    - cron: "*/5 0-18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: bus-price-alert
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      TZ: Asia/Kolkata
+    steps:
+      - uses: actions/checkout@v4
+
+      # previous run's lowest prices, so we can tell what dropped
+      - uses: actions/cache/restore@v4
+        with:
+          path: .bus_alert_state
+          key: bus-state-${{ github.run_id }}
+          restore-keys: bus-state-
+
+      - name: Check prices
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          TRAVEL_DATE: ${{ vars.TRAVEL_DATE }}
+          MIN_DROP: ${{ vars.MIN_DROP }}
+          ALERT_BELOW: ${{ vars.ALERT_BELOW }}
+          MIN_LEAD: ${{ vars.MIN_LEAD }}
+        run: |
+          python3 bus_price_alert.py \
+            --date "${TRAVEL_DATE:-today}" \
+            --min-drop "${MIN_DROP:-300}" \
+            --alert-below "${ALERT_BELOW:-1299}" \
+            --min-lead "${MIN_LEAD:-45}" \
+            --ntfy "$NTFY_TOPIC"
+
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .bus_alert_state
+          key: bus-state-${{ github.run_id }}
