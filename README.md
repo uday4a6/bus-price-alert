@@ -23,7 +23,7 @@ Checking the website by hand misses most of this. This project checks automatica
 
 ```mermaid
 flowchart LR
-    A[GitHub Actions<br/>cron every 5 min] --> B[Restore last prices<br/>actions/cache]
+    A[GitHub Actions run<br/>loops 55 min, check every 5 min] --> B[Restore last prices<br/>actions/cache]
     B --> C[bus_price_alert.py]
     C -->|POST /buslist/v3/services| D[AbhiBus API]
     D -->|all buses + fares| C
@@ -32,11 +32,15 @@ flowchart LR
     F --> G[Phone notification]
     E -->|no| H[Log only]
     C --> I[Save prices<br/>actions/cache]
+    I --> J[Dispatch next run]
+    J --> A
 ```
 
-Each run:
+GitHub's cron is unreliable for short intervals (it often skips `*/5` schedules), so each run stays alive for 55 minutes checking every 5 minutes, then starts the next run itself. An hourly cron (`7 0-18 * * *` UTC) only restarts the chain if it breaks, and in the morning, since the chain pauses 00:30–05:30 IST.
 
-1. GitHub Actions starts the workflow (every 5 minutes, 05:30–00:25 IST).
+Each check:
+
+1. The run starts (dispatched by the previous run, or by the backup cron).
 2. The prices saved by the previous run are restored from the Actions cache.
 3. The script calls the AbhiBus bus-list API for the route and date.
 4. Buses that are full, or that leave within 45 minutes, are skipped.
@@ -229,7 +233,8 @@ For each bus (keyed by `serviceId`), the script saves:
 | No alert even though the price looked lower | It wasn't below the *lowest seen* by at least `MIN_DROP`, the bus leaves within `MIN_LEAD`, or the bus has no seats |
 | Local watcher stopped checking | The Mac went to sleep. Use `caffeinate -i`; closing the lid still sleeps the Mac |
 | No Mac notification | System Settings → Notifications → Script Editor → allow |
-| Scheduled runs late or missing | GitHub delays cron at busy times (5–15 min is normal). The first scheduled run can take up to an hour |
+| No runs at all | GitHub cron may not fire for hours on a new repo. Start the chain by hand: `gh workflow run bus-price-alert.yml` |
+| Chain stopped | A run failed, so no next run was dispatched. Check the Actions tab, then start it again by hand |
 | Workflow stopped after weeks | GitHub disables schedules after 60 days with no commits. Turn it back on in the Actions tab |
 | `check failed: ...` in the log | The AbhiBus API changed or is down. Check the request in section 3 against the site's network tab |
 
