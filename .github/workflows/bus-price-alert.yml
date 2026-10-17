@@ -14,6 +14,11 @@ on:
     # every 5 min, 05:30-00:25 IST (cron is UTC). GitHub may delay runs at busy times.
     - cron: "*/5 0-18 * * *"
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Send a test alert with current cheapest buses"
+        type: boolean
+        default: false
 
 concurrency:
   group: bus-price-alert
@@ -42,8 +47,9 @@ jobs:
           MIN_DROP: ${{ vars.MIN_DROP }}
           ALERT_BELOW: ${{ vars.ALERT_BELOW }}
           MIN_LEAD: ${{ vars.MIN_LEAD }}
+          TEST_ALERT: ${{ inputs.test && '--test-alert' || '' }}
         run: |
-          python3 bus_price_alert.py \
+          python3 bus_price_alert.py $TEST_ALERT \
             --date "${TRAVEL_DATE:-today}" \
             --min-drop "${MIN_DROP:-300}" \
             --alert-below "${ALERT_BELOW:-1299}" \

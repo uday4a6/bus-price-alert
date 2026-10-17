@@ -129,6 +129,14 @@ def check_once(args, state_file):
         f"{cheapest['operator']} ({cheapest['departs']}, {cheapest['bus_type']})"
     )
 
+    if args.test_alert:
+        top = sorted(buses, key=lambda b: b["price"])[:5]
+        notify(
+            f"TEST alert {args.src}->{args.dst} {args.date}",
+            "\n".join(f"Rs {b['price']}  {b['operator']} {b['departs']} ({b['seats']} seats)" for b in top),
+            args.ntfy,
+        )
+
     lines = [
         f"Rs {prev} -> Rs {b['price']}  {b['operator']} {b['departs']} ({b['bus_type']}, {b['seats']} seats)"
         for b, prev in sorted(drops, key=lambda x: x[0]["price"])
@@ -164,6 +172,7 @@ def main():
     p.add_argument("--for", dest="duration", type=float, help="stop after N minutes")
     p.add_argument("--min-lead", type=float, help="ignore buses departing within N minutes")
     p.add_argument("--ntfy", help="ntfy.sh topic for phone push (install ntfy app, subscribe to topic)")
+    p.add_argument("--test-alert", action="store_true", help="always send cheapest buses (to verify alerts)")
     p.add_argument("--state-dir", default=str(Path(__file__).parent / ".bus_alert_state"))
     args = p.parse_args()
     if args.date.lower() == "today":
