@@ -88,7 +88,8 @@ def matches(bus, args):
         # "NON-AC" contains "ac"; treat it as its own word so "AC" doesn't match it
         words = set(bus["bus_type"].lower().replace("non-ac", "nonac").replace("(", " ").split())
         wanted = args.bus_type.lower().replace("non-ac", "nonac").split()
-        if not all(w in words for w in wanted):
+        # prefix match, so "9600" also matches "9600S"
+        if not all(any(x.startswith(w) for x in words) for w in wanted):
             return False
     return True
 

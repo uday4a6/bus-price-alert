@@ -148,6 +148,7 @@ https://www.abhibus.com/bus_search/Bengaluru/7/Vijayawada/5/16-10-2026/O
    | `MIN_LEAD` | `45` | Ignore buses leaving within this many minutes |
    | `DEPART_AFTER` | none | Only buses leaving at/after this time, `HH:MM` 24h (e.g. `17:00`) |
    | `DEPART_BEFORE` | none | Only buses leaving at/before this time, `HH:MM` 24h (e.g. `22:00`) |
+   | `BUS_TYPE` | none | Words that must start a word in the bus type, e.g. `9600 multiaxle` |
 
    When `TRAVEL_DATE` is set and that date has passed, the workflow disables itself.
 

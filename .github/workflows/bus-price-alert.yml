@@ -7,6 +7,7 @@
 #   variable ALERT_BELOW  alert when cheapest bus is at or below this (default 1299)
 #   variable MIN_LEAD     ignore buses leaving within N minutes (default 45)
 #   variable DEPART_AFTER / DEPART_BEFORE  only buses leaving in this window, HH:MM 24h (e.g. 17:00 / 22:00)
+#   variable BUS_TYPE     words that must appear in the bus type (e.g. "9600 multiaxle")
 #
 # Once TRAVEL_DATE has passed, the workflow disables itself.
 
@@ -75,6 +76,7 @@ jobs:
           MIN_LEAD: ${{ vars.MIN_LEAD }}
           DEPART_AFTER: ${{ vars.DEPART_AFTER }}
           DEPART_BEFORE: ${{ vars.DEPART_BEFORE }}
+          BUS_TYPE: ${{ vars.BUS_TYPE }}
           # test run: single check with test alert; normal run: loop 55 min
           MODE: ${{ inputs.test && '--test-alert' || '--every 5 --for 55' }}
         run: |
@@ -85,6 +87,7 @@ jobs:
             --min-lead "${MIN_LEAD:-45}" \
             --depart-after "${DEPART_AFTER:-}" \
             --depart-before "${DEPART_BEFORE:-}" \
+            --bus-type "${BUS_TYPE:-}" \
             --ntfy "$NTFY_TOPIC"
 
       - uses: actions/cache/save@v4
