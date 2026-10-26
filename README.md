@@ -146,6 +146,10 @@ https://www.abhibus.com/bus_search/Bengaluru/7/Vijayawada/5/16-10-2026/O
    | `MIN_DROP` | `300` | Alert when a bus gets at least this much cheaper (Rs) |
    | `ALERT_BELOW` | `1299` | Alert when the cheapest bus is at or below this |
    | `MIN_LEAD` | `45` | Ignore buses leaving within this many minutes |
+   | `DEPART_AFTER` | none | Only buses leaving at/after this time, `HH:MM` 24h (e.g. `17:00`) |
+   | `DEPART_BEFORE` | none | Only buses leaving at/before this time, `HH:MM` 24h (e.g. `22:00`) |
+
+   When `TRAVEL_DATE` is set and that date has passed, the workflow disables itself.
 
    ```bash
    gh variable set TRAVEL_DATE --body "20-10-2026"
@@ -203,6 +207,7 @@ Don't run it locally while the GitHub workflow is on with the same topic, or you
 | `--alert-below` | Extra alert when the cheapest bus is at or below this price |
 | `--min-drop` | Ignore drops smaller than this (Rs). Default 1 |
 | `--min-lead` | Ignore buses departing within N minutes |
+| `--depart-after`, `--depart-before` | Only buses departing in this window, `HH:MM` 24h |
 | `--every` | Repeat every N minutes. Without it, the script checks once |
 | `--for` | Stop after N minutes |
 | `--ntfy` | ntfy topic for phone push |

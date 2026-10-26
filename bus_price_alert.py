@@ -76,6 +76,12 @@ def matches(bus, args):
         mins_left = (datetime.fromisoformat(bus["starts_at"]) - datetime.now().astimezone()).total_seconds() / 60
         if mins_left < args.min_lead:
             return False
+    if (args.depart_after or args.depart_before) and bus["starts_at"]:
+        hhmm = datetime.fromisoformat(bus["starts_at"]).strftime("%H:%M")
+        if args.depart_after and hhmm < args.depart_after:
+            return False
+        if args.depart_before and hhmm > args.depart_before:
+            return False
     if args.operator and args.operator.lower() not in bus["operator"].lower():
         return False
     if args.bus_type:
@@ -171,6 +177,8 @@ def main():
     p.add_argument("--every", type=float, help="repeat every N minutes (omit for single check)")
     p.add_argument("--for", dest="duration", type=float, help="stop after N minutes")
     p.add_argument("--min-lead", type=float, help="ignore buses departing within N minutes")
+    p.add_argument("--depart-after", help="only buses departing at/after HH:MM (24h), e.g. 17:00")
+    p.add_argument("--depart-before", help="only buses departing at/before HH:MM (24h), e.g. 22:00")
     p.add_argument("--ntfy", help="ntfy.sh topic for phone push (install ntfy app, subscribe to topic)")
     p.add_argument("--test-alert", action="store_true", help="always send cheapest buses (to verify alerts)")
     p.add_argument("--state-dir", default=str(Path(__file__).parent / ".bus_alert_state"))

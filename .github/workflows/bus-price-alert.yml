@@ -6,6 +6,9 @@
 #   variable MIN_DROP     alert when a bus drops at least this much (default 300)
 #   variable ALERT_BELOW  alert when cheapest bus is at or below this (default 1299)
 #   variable MIN_LEAD     ignore buses leaving within N minutes (default 45)
+#   variable DEPART_AFTER / DEPART_BEFORE  only buses leaving in this window, HH:MM 24h (e.g. 17:00 / 22:00)
+#
+# Once TRAVEL_DATE has passed, the workflow disables itself.
 
 name: Bus price alert
 
@@ -36,22 +39,42 @@ jobs:
     env:
       TZ: Asia/Kolkata
     steps:
+      - name: Stop if trip is over
+        id: trip
+        env:
+          TRAVEL_DATE: ${{ vars.TRAVEL_DATE }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -n "$TRAVEL_DATE" ]; then
+            trip=$(echo "$TRAVEL_DATE" | awk -F- '{print $3$2$1}')
+            if [ "$trip" -lt "$(date +%Y%m%d)" ]; then
+              echo "Travel date $TRAVEL_DATE has passed, disabling workflow"
+              gh workflow disable bus-price-alert.yml --repo "$GITHUB_REPOSITORY"
+              echo "over=1" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.trip.outputs.over != '1'
 
       # previous run's lowest prices, so we can tell what dropped
       - uses: actions/cache/restore@v4
+        if: steps.trip.outputs.over != '1'
         with:
           path: .bus_alert_state
           key: bus-state-${{ github.run_id }}
           restore-keys: bus-state-
 
       - name: Check prices
+        if: steps.trip.outputs.over != '1'
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
           TRAVEL_DATE: ${{ vars.TRAVEL_DATE }}
           MIN_DROP: ${{ vars.MIN_DROP }}
           ALERT_BELOW: ${{ vars.ALERT_BELOW }}
           MIN_LEAD: ${{ vars.MIN_LEAD }}
+          DEPART_AFTER: ${{ vars.DEPART_AFTER }}
+          DEPART_BEFORE: ${{ vars.DEPART_BEFORE }}
           # test run: single check with test alert; normal run: loop 55 min
           MODE: ${{ inputs.test && '--test-alert' || '--every 5 --for 55' }}
         run: |
@@ -60,17 +83,19 @@ jobs:
             --min-drop "${MIN_DROP:-300}" \
             --alert-below "${ALERT_BELOW:-1299}" \
             --min-lead "${MIN_LEAD:-45}" \
+            --depart-after "${DEPART_AFTER:-}" \
+            --depart-before "${DEPART_BEFORE:-}" \
             --ntfy "$NTFY_TOPIC"
 
       - uses: actions/cache/save@v4
-        if: always()
+        if: always() && steps.trip.outputs.over != '1'
         with:
           path: .bus_alert_state
           key: bus-state-${{ github.run_id }}
 
       # chain: start the next run, except at night (00:30-05:30 IST); the cron restarts it in the morning
       - name: Dispatch next run
-        if: success() && !inputs.test
+        if: success() && !inputs.test && steps.trip.outputs.over != '1'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
