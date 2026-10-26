@@ -142,6 +142,7 @@ https://www.abhibus.com/bus_search/Bengaluru/7/Vijayawada/5/16-10-2026/O
 
    | Variable | Default | Meaning |
    |---|---|---|
+   | `SRC`, `SRC_ID`, `DST`, `DST_ID` | Bengaluru 7 → Vijayawada 5 | Route. IDs are in the AbhiBus search URL |
    | `TRAVEL_DATE` | today (IST) | `DD-MM-YYYY` to watch a specific day |
    | `MIN_DROP` | `300` | Alert when a bus gets at least this much cheaper (Rs) |
    | `ALERT_BELOW` | `1299` | Alert when the cheapest bus is at or below this |

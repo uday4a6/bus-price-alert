@@ -64,9 +64,17 @@ def summarize(svc):
         "bus_type": svc.get("busTypeName", ""),
         "departs": svc.get("timings", {}).get("startTime", ""),
         "price": fares.get("offerPrice") or fares.get("fare"),
+        "site_price": fares.get("fare"),  # shown on the website, before the auto discount
         "seats": svc.get("seatStats", {}).get("availableSeats"),
         "starts_at": svc.get("timings", {}).get("startTimeDateFormat"),
     }
+
+
+def show_price(bus):
+    site = bus.get("site_price")
+    if site and site != bus["price"]:
+        return f"Rs {bus['price']} (site Rs {site})"
+    return f"Rs {bus['price']}"
 
 
 def matches(bus, args):
@@ -140,12 +148,12 @@ def check_once(args, state_file):
         top = sorted(buses, key=lambda b: b["price"])[:5]
         notify(
             f"TEST alert {args.src}->{args.dst} {args.date}",
-            "\n".join(f"Rs {b['price']}  {b['operator']} {b['departs']} ({b['seats']} seats)" for b in top),
+            "\n".join(f"{show_price(b)}  {b['operator']} {b['departs']} ({b['seats']} seats)" for b in top),
             args.ntfy,
         )
 
     lines = [
-        f"Rs {prev} -> Rs {b['price']}  {b['operator']} {b['departs']} ({b['bus_type']}, {b['seats']} seats)"
+        f"Rs {prev} -> {show_price(b)}  {b['operator']} {b['departs']} ({b['bus_type']}, {b['seats']} seats)"
         for b, prev in sorted(drops, key=lambda x: x[0]["price"])
         if args.max_price is None or b["price"] <= args.max_price
     ]
@@ -155,7 +163,7 @@ def check_once(args, state_file):
     if below is not None and cheapest["price"] <= below and not state.get("_under_max_alerted"):
         notify(
             f"Bus under Rs {below}: {args.src}->{args.dst}",
-            f"Rs {cheapest['price']} {cheapest['operator']} {cheapest['departs']} ({cheapest['bus_type']})",
+            f"{show_price(cheapest)} {cheapest['operator']} {cheapest['departs']} ({cheapest['bus_type']})",
             args.ntfy,
         )
         state["_under_max_alerted"] = True

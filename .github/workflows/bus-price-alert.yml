@@ -2,6 +2,7 @@
 #
 # Settings (repo Settings -> Secrets and variables -> Actions):
 #   secret   NTFY_TOPIC   ntfy topic your phone is subscribed to (required)
+#   variable SRC, SRC_ID, DST, DST_ID  route (default Bengaluru 7 -> Vijayawada 5; IDs are in the AbhiBus URL)
 #   variable TRAVEL_DATE  DD-MM-YYYY, or leave unset to watch today's buses (IST)
 #   variable MIN_DROP     alert when a bus drops at least this much (default 300)
 #   variable ALERT_BELOW  alert when cheapest bus is at or below this (default 1299)
@@ -70,6 +71,10 @@ jobs:
         if: steps.trip.outputs.over != '1'
         env:
           NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+          SRC: ${{ vars.SRC }}
+          SRC_ID: ${{ vars.SRC_ID }}
+          DST: ${{ vars.DST }}
+          DST_ID: ${{ vars.DST_ID }}
           TRAVEL_DATE: ${{ vars.TRAVEL_DATE }}
           MIN_DROP: ${{ vars.MIN_DROP }}
           ALERT_BELOW: ${{ vars.ALERT_BELOW }}
@@ -81,6 +86,8 @@ jobs:
           MODE: ${{ inputs.test && '--test-alert' || '--every 5 --for 55' }}
         run: |
           python3 -u bus_price_alert.py $MODE \
+            --src "${SRC:-Bengaluru}" --src-id "${SRC_ID:-7}" \
+            --dst "${DST:-Vijayawada}" --dst-id "${DST_ID:-5}" \
             --date "${TRAVEL_DATE:-today}" \
             --min-drop "${MIN_DROP:-300}" \
             --alert-below "${ALERT_BELOW:-1299}" \
